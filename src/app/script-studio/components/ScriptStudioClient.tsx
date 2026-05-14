@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import AppLogo from '@/components/ui/AppLogo';
 import ScriptEditor from './ScriptEditor';
 import PracticeArea from './PracticeArea';
-import { loadScript, saveScript } from '@/lib/scotspeak-db';
 
 export type StudentInfo = {
   station: string;
@@ -31,16 +30,21 @@ export default function ScriptStudioClient() {
     const parsed: StudentInfo = JSON.parse(raw);
     setStudent(parsed);
 
-    loadScript(parsed.name, parsed.station).then((content) => {
-      setSavedScript(content);
-      setIsLoaded(true);
-    });
+    // Backend integration point: GET /api/scripts/:studentName
+    const storageKey = `scotspeak_script_${parsed.name}`;
+    const existing = localStorage.getItem(storageKey);
+    if (existing) {
+      setSavedScript(existing);
+    }
+    setIsLoaded(true);
   }, [router]);
 
   const handleScriptSaved = useCallback(
-    async (text: string) => {
+    (text: string) => {
       if (!student) return;
-      await saveScript(student.name, student.station, text);
+      const storageKey = `scotspeak_script_${student.name}`;
+      // Backend integration point: PUT /api/scripts/:studentName { content: text }
+      localStorage.setItem(storageKey, text);
       setSavedScript(text);
     },
     [student]
@@ -169,8 +173,6 @@ export default function ScriptStudioClient() {
           ) : (
             <PracticeArea
               savedScript={savedScript}
-              studentName={student.name}
-              station={student.station}
               onRequestEdit={() => setActiveTab('edit')}
             />
           )}
@@ -180,7 +182,7 @@ export default function ScriptStudioClient() {
       {/* Footer */}
       <footer className="border-t border-border py-4 px-4 md:px-8 text-center">
         <p className="text-xs text-muted-foreground">
-          ScotSpeak · Evento Escócia 2026 · Dados sincronizados com a nuvem
+          ScotSpeak · Evento Escócia 2026 · Dados salvos localmente neste dispositivo
         </p>
       </footer>
     </div>

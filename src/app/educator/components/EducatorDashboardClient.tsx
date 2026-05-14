@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLogo from '@/components/ui/AppLogo';
-import { loadAllStudentProgress } from '@/lib/scotspeak-db';
-import type { StudentProgress } from '@/lib/scotspeak-db';
 
 // ── Data model (mirrors StudentSelectionClient) ──────────────────────────────
 const STATIONS: Record<string, string[]> = {
@@ -25,6 +23,16 @@ const STATIONS: Record<string, string[]> = {
   ],
   'Estação 4': ['Yasmin', 'Gabrielle', 'Karen', 'Bryan', 'Dudu'],
 };
+
+// ── Types ────────────────────────────────────────────────────────────────────
+interface StudentProgress {
+  name: string;
+  station: string;
+  accuracy: number | null;
+  attempts: number;
+  lastPractice: string | null;
+  hasScript: boolean;
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function getAccuracyColor(accuracy: number | null): string {
@@ -169,8 +177,35 @@ export default function EducatorDashboardClient() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [lastRefresh, setLastRefresh] = useState('');
 
-  async function loadData() {
-    const allStudents = await loadAllStudentProgress(STATIONS);
+  function loadData() {
+    const allStudents: StudentProgress[] = [];
+
+    for (const [station, names] of Object.entries(STATIONS)) {
+      for (const name of names) {
+        const scriptKey = `scotspeak_script_${name}`;
+        const attemptsKey = `scotspeak_attempts_${localStorage.getItem(scriptKey)?.slice(0, 20) ?? ''}`;
+        const script = localStorage.getItem(scriptKey) ?? '';
+        const attempts = script
+          ? parseInt(localStorage.getItem(`scotspeak_attempts_${script.slice(0, 20)}`) ?? '0', 10)
+          : 0;
+        const accuracyRaw = script
+          ? localStorage.getItem(`scotspeak_accuracy_${name}`)
+          : null;
+        const lastPracticeRaw = script
+          ? localStorage.getItem(`scotspeak_lastpractice_${name}`)
+          : null;
+
+        allStudents.push({
+          name,
+          station,
+          accuracy: accuracyRaw !== null ? parseInt(accuracyRaw, 10) : null,
+          attempts,
+          lastPractice: lastPracticeRaw,
+          hasScript: script.length > 0,
+        });
+      }
+    }
+
     setStudents(allStudents);
     setIsLoaded(true);
     setLastRefresh(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
@@ -368,7 +403,7 @@ export default function EducatorDashboardClient() {
       {/* Footer */}
       <footer className="border-t border-border py-4 px-4 md:px-8 text-center">
         <p className="text-xs text-muted-foreground">
-          ScotSpeak · Painel do Educador · Dados sincronizados em tempo real com o Supabase
+          ScotSpeak · Painel do Educador · Dados lidos do localStorage dos dispositivos dos alunos
         </p>
       </footer>
     </div>

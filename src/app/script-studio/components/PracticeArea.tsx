@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { savePracticeSession, loadAttemptCount } from '@/lib/scotspeak-db';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type WordStatus = 'neutral' | 'correct' | 'incorrect' | 'pending';
@@ -60,13 +59,11 @@ function getAccuracyLabel(pct: number): { label: string; className: string } {
 // ── Props ────────────────────────────────────────────────────────────────────
 type Props = {
   savedScript: string;
-  studentName: string;
-  station: string;
   onRequestEdit: () => void;
 };
 
 // ── Main Component ───────────────────────────────────────────────────────────
-export default function PracticeArea({ savedScript, studentName, station, onRequestEdit }: Props) {
+export default function PracticeArea({ savedScript, onRequestEdit }: Props) {
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [wordResults, setWordResults] = useState<WordResult[]>([]);
   const [spokenText, setSpokenText] = useState('');
@@ -96,8 +93,9 @@ export default function PracticeArea({ savedScript, studentName, station, onRequ
     if (!window.speechSynthesis) {
       setTtsSupported(false);
     }
-    loadAttemptCount(studentName, station).then((count) => setAttemptCount(count));
-  }, [savedScript, studentName, station]);
+    const stored = localStorage.getItem(`scotspeak_attempts_${savedScript.slice(0, 20)}`);
+    if (stored) setAttemptCount(parseInt(stored, 10));
+  }, [savedScript]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -184,8 +182,10 @@ export default function PracticeArea({ savedScript, studentName, station, onRequ
         setAccuracy(pct);
         setRecordingState('done');
 
-        savePracticeSession(studentName, station, pct, transcript).then(() => {
-          setAttemptCount((prev) => prev + 1);
+        setAttemptCount((prev) => {
+          const newCount = prev + 1;
+          localStorage.setItem(`scotspeak_attempts_${savedScript.slice(0, 20)}`, String(newCount));
+          return newCount;
         });
       }, 400);
     };
