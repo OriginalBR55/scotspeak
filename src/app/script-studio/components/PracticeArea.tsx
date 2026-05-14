@@ -74,6 +74,7 @@ export default function PracticeArea({ savedScript, onRequestEdit }: Props) {
   const [speechSupported, setSpeechSupported] = useState(true);
   const [ttsSupported, setTtsSupported] = useState(true);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(0.9);
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -118,7 +119,7 @@ export default function PracticeArea({ savedScript, onRequestEdit }: Props) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(savedScript);
     utterance.lang = 'en-US';
-    utterance.rate = 0.9;
+    utterance.rate = playbackSpeed;
     utterance.pitch = 1;
 
     const voices = window.speechSynthesis.getVoices();
@@ -133,7 +134,7 @@ export default function PracticeArea({ savedScript, onRequestEdit }: Props) {
 
     utteranceRef.current = utterance;
     window.speechSynthesis.speak(utterance);
-  }, [savedScript, isSpeaking, ttsSupported]);
+  }, [savedScript, isSpeaking, ttsSupported, playbackSpeed]);
 
   // ── Speech Recognition ───────────────────────────────────────────────────
   const startRecording = useCallback(() => {
@@ -299,33 +300,58 @@ export default function PracticeArea({ savedScript, onRequestEdit }: Props) {
               </h2>
             </div>
             {/* TTS button */}
-            <button
-              onClick={handleListen}
-              disabled={!ttsSupported || recordingState === 'recording'}
-              className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-600 transition-all duration-150 ${
-                isSpeaking ? 'btn-danger' : 'btn-accent'
-              }`}
-              style={{ fontWeight: 600 }}
-              title={isSpeaking ? 'Parar leitura' : 'Ouvir Roteiro com voz en-US'}
-              aria-label={isSpeaking ? 'Parar leitura do roteiro' : 'Ouvir roteiro em inglês'}
-            >
-              {isSpeaking ? (
-                <>
-                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-                  </svg>
-                  <span className="hidden sm:inline">Parar</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-9.536a5 5 0 000 7.072" />
-                  </svg>
-                  <span>Ouvir Roteiro</span>
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Speed selector */}
+              <div className="flex items-center gap-1 rounded-lg border border-border overflow-hidden" style={{ background: 'var(--background)' }}>
+                {([0.5, 0.75, 0.9, 1, 1.25] as number[]).map((speed) => (
+                  <button
+                    key={speed}
+                    onClick={() => setPlaybackSpeed(speed)}
+                    disabled={isSpeaking}
+                    className={`px-2 py-1.5 text-xs font-600 transition-all duration-150 ${
+                      playbackSpeed === speed
+                        ? 'text-white' :'text-muted-foreground hover:text-foreground'
+                    }`}
+                    style={{
+                      fontWeight: 600,
+                      background: playbackSpeed === speed ? 'var(--primary)' : 'transparent',
+                    }}
+                    title={`Velocidade ${speed}x`}
+                    aria-label={`Velocidade de leitura ${speed}x`}
+                    aria-pressed={playbackSpeed === speed}
+                  >
+                    {speed === 0.9 ? '0.9×' : `${speed}×`}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={handleListen}
+                disabled={!ttsSupported || recordingState === 'recording'}
+                className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-600 transition-all duration-150 ${
+                  isSpeaking ? 'btn-danger' : 'btn-accent'
+                }`}
+                style={{ fontWeight: 600 }}
+                title={isSpeaking ? 'Parar leitura' : 'Ouvir Roteiro com voz en-US'}
+                aria-label={isSpeaking ? 'Parar leitura do roteiro' : 'Ouvir roteiro em inglês'}
+              >
+                {isSpeaking ? (
+                  <>
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                    </svg>
+                    <span className="hidden sm:inline">Parar</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-9.536a5 5 0 000 7.072" />
+                    </svg>
+                    <span>Ouvir Roteiro</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
           <div className="p-4 md:p-5">
             {wordResults.length > 0 ? (
