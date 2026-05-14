@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { savePracticeSession, loadAttemptCount } from '@/lib/scotspeak-db';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type WordStatus = 'neutral' | 'correct' | 'incorrect' | 'pending';
@@ -59,11 +60,13 @@ function getAccuracyLabel(pct: number): { label: string; className: string } {
 // ── Props ────────────────────────────────────────────────────────────────────
 type Props = {
   savedScript: string;
+  studentName: string;
+  station: string;
   onRequestEdit: () => void;
 };
 
 // ── Main Component ───────────────────────────────────────────────────────────
-export default function PracticeArea({ savedScript, onRequestEdit }: Props) {
+export default function PracticeArea({ savedScript, studentName, station, onRequestEdit }: Props) {
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [wordResults, setWordResults] = useState<WordResult[]>([]);
   const [spokenText, setSpokenText] = useState('');
@@ -93,9 +96,8 @@ export default function PracticeArea({ savedScript, onRequestEdit }: Props) {
     if (!window.speechSynthesis) {
       setTtsSupported(false);
     }
-    const stored = localStorage.getItem(`scotspeak_attempts_${savedScript.slice(0, 20)}`);
-    if (stored) setAttemptCount(parseInt(stored, 10));
-  }, [savedScript]);
+    loadAttemptCount(studentName, station).then((count) => setAttemptCount(count));
+  }, [savedScript, studentName, station]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -182,10 +184,8 @@ export default function PracticeArea({ savedScript, onRequestEdit }: Props) {
         setAccuracy(pct);
         setRecordingState('done');
 
-        setAttemptCount((prev) => {
-          const newCount = prev + 1;
-          localStorage.setItem(`scotspeak_attempts_${savedScript.slice(0, 20)}`, String(newCount));
-          return newCount;
+        savePracticeSession(studentName, station, pct, transcript).then(() => {
+          setAttemptCount((prev) => prev + 1);
         });
       }, 400);
     };
